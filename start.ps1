@@ -45,29 +45,29 @@ foreach ($d in @("data", "woob-data")) {
 }
 
 # ── 4. Environnement virtuel Python ─────────────────────────────────────
+# Le venv est cree HORS OneDrive pour eviter les conflits de synchronisation
 Write-Step "Configuration de l'environnement Python..."
-$venvPath = Join-Path $ProjectRoot ".venv"
+$venvPath = Join-Path $env:USERPROFILE ".bankassistant_venv"
 if (-not (Test-Path $venvPath)) {
-    Write-Host "    Creation du venv..."
+    Write-Host "    Creation du venv dans $venvPath ..."
     python -m venv $venvPath
     Write-OK "Venv cree"
 } else {
-    Write-OK "Venv existant"
+    Write-OK "Venv existant : $venvPath"
 }
 
-$pip    = Join-Path $venvPath "Scripts\pip.exe"
 $python = Join-Path $venvPath "Scripts\python.exe"
 
 # ── 5. Installer les dependances Python ─────────────────────────────────
 Write-Step "Installation des dependances Python..."
 $reqFile = Join-Path $ProjectRoot "backend\requirements.txt"
 Write-Host "    pip install -r requirements.txt (peut prendre 2-3 min la premiere fois)..."
-& $pip install -r $reqFile --quiet --no-warn-script-location 2>&1 | Out-Null
+& $python -m pip install -r $reqFile --quiet --no-warn-script-location 2>&1 | Out-Null
 Write-OK "Dependances installees"
 
 # Tenter woob separement (optionnel, peut echouer sur Windows)
 Write-Host "    Tentative d'installation de woob (optionnel)..."
-$woobResult = & $pip install woob --quiet --no-warn-script-location 2>&1
+& $python -m pip install woob --quiet --no-warn-script-location 2>&1 | Out-Null
 if ($LASTEXITCODE -eq 0) {
     Write-OK "woob installe - scraping automatique disponible"
 } else {
