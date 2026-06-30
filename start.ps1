@@ -61,18 +61,27 @@ $python = Join-Path $venvPath "Scripts\python.exe"
 # ── 5. Installer les dependances Python ─────────────────────────────────
 Write-Step "Installation des dependances Python..."
 $reqFile = Join-Path $ProjectRoot "backend\requirements.txt"
-Write-Host "    pip install -r requirements.txt (peut prendre 2-3 min la premiere fois)..."
-& $python -m pip install -r $reqFile --quiet --no-warn-script-location 2>&1 | Out-Null
+Write-Host "    pip install -r requirements.txt..."
+Write-Host "    (premiere installation : 3-10 min selon votre connexion et Python version)"
+Write-Host ""
+& $python -m pip install -r $reqFile --no-warn-script-location
+if ($LASTEXITCODE -ne 0) {
+    Write-Fail "Erreur lors de l'installation des dependances."
+    Write-Warn "Si vous utilisez Python 3.14, certains packages peuvent ne pas etre compatibles."
+    Write-Warn "Essayez avec Python 3.11 ou 3.12 depuis https://www.python.org/downloads/"
+    Read-Host "Appuyez sur Entree pour quitter"
+    exit 1
+}
 Write-OK "Dependances installees"
 
 # Tenter woob separement (optionnel, peut echouer sur Windows)
-Write-Host "    Tentative d'installation de woob (optionnel)..."
-& $python -m pip install woob --quiet --no-warn-script-location 2>&1 | Out-Null
+Write-Host ""
+Write-Host "    Tentative d'installation de woob (optionnel, peut echouer sur Windows)..."
+& $python -m pip install woob --no-warn-script-location 2>&1 | Out-Null
 if ($LASTEXITCODE -eq 0) {
     Write-OK "woob installe - scraping automatique disponible"
 } else {
-    Write-Warn "woob non installe (normal sur Windows sans Visual C++ Build Tools)"
-    Write-Warn "Utilisez l'import CSV/OFX depuis l'interface pour importer vos releves."
+    Write-Warn "woob non installe (optionnel - utilisez l'import CSV/OFX depuis l'interface)"
 }
 
 # ── 6. Creer .env si absent ─────────────────────────────────────────────
