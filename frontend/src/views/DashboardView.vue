@@ -85,6 +85,36 @@
       </n-grid-item>
     </n-grid>
 
+    <!-- Budgets -->
+    <n-card title="État des budgets" embedded bordered style="margin-bottom: 24px;">
+      <template #header-extra>
+        <n-button text tag="a" href="/budgets">Gérer →</n-button>
+      </template>
+      <n-skeleton v-if="budgetsLoading" :repeat="2" text />
+      <n-empty v-else-if="budgets.length === 0" description="Aucun budget configuré" size="small" />
+      <n-grid v-else :cols="isMobile ? 1 : Math.min(budgets.length, 3)" :x-gap="12" :y-gap="8">
+        <n-grid-item v-for="b in budgets" :key="b.id">
+          <div style="padding: 4px 0;">
+            <n-space justify="space-between" align="center">
+              <n-text style="font-size: 13px;" strong>{{ b.name }}</n-text>
+              <n-text style="font-size: 12px;" :style="{ color: b.target_amount && b.spent > b.target_amount ? '#d03050' : '#18a058' }">
+                {{ b.spent.toFixed(2) }} €{{ b.target_amount ? ` / ${b.target_amount.toFixed(2)} €` : '' }}
+              </n-text>
+            </n-space>
+            <n-progress
+              v-if="b.target_amount"
+              type="line"
+              :percentage="Math.min(100, (b.spent / b.target_amount) * 100)"
+              :color="b.spent > b.target_amount ? '#d03050' : b.color || '#18a058'"
+              :show-indicator="false"
+              style="margin-top: 4px;"
+            />
+            <n-text v-else depth="3" style="font-size: 11px;">{{ b.entry_count }} opération(s)</n-text>
+          </div>
+        </n-grid-item>
+      </n-grid>
+    </n-card>
+
     <!-- Transactions récentes -->
     <n-card title="Transactions récentes" embedded bordered>
       <template #header-extra>
@@ -131,6 +161,7 @@ import { format, startOfMonth } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useAccountsStore } from '@/stores/accounts'
 import { useTransactionsStore } from '@/stores/transactions'
+import { useBudgetsStore } from '@/stores/budgets'
 
 use([PieChart, TitleComponent, TooltipComponent, LegendComponent, CanvasRenderer])
 
@@ -141,7 +172,10 @@ const txStore = useTransactionsStore()
 
 const txLoading = ref(true)
 const chartLoading = ref(true)
+const budgetsLoading = ref(true)
 
+const budgetsStore = useBudgetsStore()
+const budgets = computed(() => budgetsStore.budgets)
 const accounts = computed(() => accountsStore.accounts)
 const totalBalance = computed(() => accountsStore.totalBalance)
 const recentTransactions = computed(() => txStore.transactions.slice(0, 10))
@@ -206,6 +240,7 @@ onMounted(async () => {
   await Promise.all([
     accountsStore.fetchAccounts(),
     txStore.fetchTransactions({ limit: 50, date_from: monthStart }),
+    budgetsStore.fetchBudgets().finally(() => { budgetsLoading.value = false }),
   ])
   txLoading.value = false
   chartLoading.value = false
