@@ -77,8 +77,10 @@ Write-OK "Dependances installees"
 # Tenter woob separement (optionnel, peut echouer sur Windows)
 Write-Host ""
 Write-Host "    Tentative d'installation de woob (optionnel, peut echouer sur Windows)..."
-& $python -m pip install woob --no-warn-script-location 2>&1 | Out-Null
-if ($LASTEXITCODE -eq 0) {
+$prevEA = $ErrorActionPreference ; $ErrorActionPreference = 'SilentlyContinue'
+& $python -m pip install woob --no-warn-script-location *>$null
+$woobExit = $LASTEXITCODE ; $ErrorActionPreference = $prevEA
+if ($woobExit -eq 0) {
     Write-OK "woob installe - scraping automatique disponible"
 } else {
     Write-Warn "woob non installe (optionnel - utilisez l'import CSV/OFX depuis l'interface)"
@@ -149,10 +151,14 @@ if ($needBuild) {
         $nodeModules = Join-Path $frontendDir "node_modules"
         if (-not (Test-Path $nodeModules)) {
             Write-Host "    npm install..."
-            npm install --silent 2>&1 | Out-Null
+            $prevEA = $ErrorActionPreference ; $ErrorActionPreference = 'SilentlyContinue'
+            npm install --silent *>$null
+            $ErrorActionPreference = $prevEA
         }
         Write-Host "    npm run build..."
-        npm run build 2>&1 | Out-Null
+        $prevEA = $ErrorActionPreference ; $ErrorActionPreference = 'SilentlyContinue'
+        npm run build *>$null
+        $ErrorActionPreference = $prevEA
         if ($LASTEXITCODE -ne 0) {
             Write-Fail "Build frontend echoue. Lancez 'npm run build' dans le dossier frontend/ pour voir les erreurs."
             Pop-Location
@@ -169,8 +175,10 @@ if ($needBuild) {
 Write-Step "Verification de la base de donnees..."
 Push-Location (Join-Path $ProjectRoot "backend")
 try {
-    & $python -m alembic upgrade head 2>&1 | Out-Null
-    Write-OK "Base de donnees prete"
+    $prevEA = $ErrorActionPreference ; $ErrorActionPreference = 'SilentlyContinue'
+    & $python -m alembic upgrade head *>$null
+    $alembicExit = $LASTEXITCODE ; $ErrorActionPreference = $prevEA
+    if ($alembicExit -eq 0) { Write-OK "Base de donnees prete" } else { throw "alembic exit $alembicExit" }
 } catch {
     Write-Warn "Migration ignoree (sera appliquee au demarrage)"
 } finally {
