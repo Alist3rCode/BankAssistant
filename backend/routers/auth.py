@@ -61,6 +61,11 @@ class RegisterRequest(BaseModel):
     password: str
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
 # ---------- Helpers ----------
 
 def _log_audit(db: Session, action: str, user_id: Optional[str], request: Request, details: str = "") -> None:
@@ -230,3 +235,20 @@ async def me(current_user: CurrentUser):
         "totp_enabled": current_user.totp_enabled,
         "last_login": current_user.last_login,
     }
+
+
+@router.put("/password")
+async def change_password(
+    body: ChangePasswordRequest,
+    current_user: CurrentUser,
+    db: DB,
+    request: Request,
+):
+    """Change le mot de passe après vérification de l'ancien."""
+    if not verify_password(body.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
+
+    current_user.hashed_password = hash_password(body.new_password)
+    db.commit()
+    _log_audit(db, "PASSWORD_CHANGED", current_user.id, request)
+    return {"message": "Mot de passe modifié avec succès"}

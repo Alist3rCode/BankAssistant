@@ -67,12 +67,22 @@ from routers.accounts import router as accounts_router
 from routers.transactions import router as transactions_router
 from routers.scraper import router as scraper_router
 from routers.settings import router as settings_router
+from routers.budgets import router as budgets_router
+from routers.categories import router as categories_router
+from routers.ai import router as ai_router
+from routers.audit import router as audit_router
+from routers.notifications import router as notifications_router
 
 app.include_router(auth_router)
 app.include_router(accounts_router)
 app.include_router(transactions_router)
 app.include_router(scraper_router)
 app.include_router(settings_router)
+app.include_router(budgets_router)
+app.include_router(categories_router)
+app.include_router(ai_router)
+app.include_router(audit_router)
+app.include_router(notifications_router)
 
 
 @app.get("/health")

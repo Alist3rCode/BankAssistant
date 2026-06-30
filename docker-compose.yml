@@ -11,6 +11,15 @@ services:
       - caddy_config:/config
     depends_on:
       - backend
+      - frontend
+    networks:
+      - banknet
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
     networks:
       - banknet
 
