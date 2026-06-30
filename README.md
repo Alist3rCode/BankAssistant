@@ -49,59 +49,51 @@ Internet / réseau local
 
 ## 🚀 Démarrage rapide
 
-### Prérequis
+### Option A — Sans Docker (recommandé pour tester en local)
 
-- [Docker](https://docs.docker.com/engine/install/) + [Docker Compose](https://docs.docker.com/compose/install/) (v2)
-- Git
+**Prérequis :** [Python 3.10+](https://www.python.org/downloads/) · [Node.js 18+](https://nodejs.org/)
 
-### 1. Cloner le dépôt
+```powershell
+# Cloner le projet
+git clone https://github.com/Alist3rCode/BankAssistant.git
+cd BankAssistant
+
+# Lancer (première fois : installe tout automatiquement ~3 min)
+powershell -ExecutionPolicy Bypass -File .\start.ps1
+```
+
+Ou double-cliquer sur **`start.bat`**.
+
+Le script fait tout automatiquement :
+- Crée le `.env` avec des clés générées
+- Crée le venv Python et installe les dépendances
+- Builde le frontend Vue.js
+- Applique les migrations de base de données
+- Lance le serveur sur **[http://localhost:8000](http://localhost:8000)**
+
+> Au prochain démarrage, il suffit de relancer `start.ps1` — tout est déjà installé, ça prend 5 secondes.
+
+---
+
+### Option B — Avec Docker
+
+**Prérequis :** [Docker](https://docs.docker.com/engine/install/) + [Docker Compose](https://docs.docker.com/compose/install/) (v2)
 
 ```bash
 git clone https://github.com/Alist3rCode/BankAssistant.git
 cd BankAssistant
-```
-
-### 2. Configurer l'environnement
-
-```bash
 cp .env.example .env
-```
-
-Générer les deux clés obligatoires :
-
-```bash
-# Clé Fernet (chiffrement des identifiants en base)
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-
-# Clé secrète JWT
-python -c "import secrets; print(secrets.token_hex(32))"
-```
-
-Ouvrir `.env` et remplir :
-```env
-ENCRYPTION_KEY=<résultat commande 1>
-SECRET_KEY=<résultat commande 2>
-```
-
-> ⚠️ Ces deux clés sont critiques. Ne les perdez pas et ne les commitez jamais.
-
-### 3. Lancer les services
-
-```bash
+# Générer et remplir ENCRYPTION_KEY et SECRET_KEY dans .env (voir .env.example)
 docker compose up -d --build
 ```
 
-Le premier démarrage prend ~5 minutes (compilation du frontend, téléchargement des modules woob).
+Accès : **[https://localhost](https://localhost)** (certificat auto-signé → accepter l'avertissement).
 
-### 4. Accéder à l'application
+---
 
-Ouvrir **[https://localhost](https://localhost)** dans votre navigateur.
+### Créer votre compte
 
-> Le certificat est auto-signé — accepter l'avertissement de sécurité la première fois (normal en local).
-
-### 5. Créer votre compte
-
-Lors de la première visite, l'interface vous propose de créer le compte administrateur (email + mot de passe). Un seul compte est supporté (mono-utilisateur).
+Lors de la première visite, l'interface propose de créer le compte administrateur (email + mot de passe). Un seul compte est supporté (mono-utilisateur).
 
 ---
 

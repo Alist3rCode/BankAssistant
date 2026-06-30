@@ -133,15 +133,13 @@ class CreditAgricoleScraper:
 
     def _run_woob_fetch_accounts(self) -> list[ScrapedAccount]:
         """Appel woob Python API pour récupérer les comptes."""
-        env = {**os.environ, "WOOB_WORKDIR": str(self.woob_dir)}
-
-        # Import woob localement pour éviter les erreurs au démarrage si pas installé
         try:
             from woob.core import Woob
             from woob.capabilities.bank import CapBank
         except ImportError as e:
             raise RuntimeError(
-                "woob n'est pas installé. Lancez `pip install woob && woob update` dans le container."
+                "woob n'est pas installé ou non compatible avec cet OS. "
+                "Utilisez l'import CSV/OFX depuis l'interface (Transactions → Import)."
             ) from e
 
         w = Woob(workdir=str(self.woob_dir))

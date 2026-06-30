@@ -5,8 +5,8 @@ from pydantic import Field
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # Base de données
-    db_path: str = "/app/data/bankassistant.db"
+    # Base de données (chemin relatif au dossier courant en local, absolu en Docker)
+    db_path: str = "./data/bankassistant.db"
     encryption_key: str = Field(..., description="Clé Fernet base64 pour le chiffrement des champs sensibles")
 
     # JWT
@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     lockout_duration_minutes: int = 15
 
     # Woob
-    woob_data_dir: str = "/app/woob-data"
+    woob_data_dir: str = "./woob-data"
 
     # IA
     default_llm_provider: str = "groq"
@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     ntfy_token: str = ""
 
     # Application
-    app_url: str = "https://localhost"
+    app_url: str = "http://localhost:8000"
     log_level: str = "INFO"
     debug: bool = False
 

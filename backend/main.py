@@ -2,11 +2,13 @@ import logging
 import subprocess
 import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -60,10 +62,15 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS — restreint à l'URL de l'application (PWA sur même domaine)
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.app_url, "http://localhost:5173"],  # Vite dev server
+    allow_origins=[
+        settings.app_url,
+        "http://localhost:8000",
+        "http://localhost:5173",  # Vite dev server
+        "https://localhost",
+    ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
@@ -100,3 +107,24 @@ app.include_router(export_router)
 @app.get("/health")
 async def health():
     return {"status": "ok", "version": "1.0.0"}
+
+
+# ── Servir le frontend Vue.js buildé (mode local sans Docker/Caddy) ────────
+_FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
+
+if _FRONTEND_DIST.exists():
+    logger.info("Frontend dist trouvé — service des fichiers statiques activé")
+
+    # /assets/* — JS, CSS, fonts hashés (cache long)
+    _assets_dir = _FRONTEND_DIST / "assets"
+    if _assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_fallback(full_path: str):
+        """Sert index.html pour toutes les routes non-API (SPA routing Vue Router)."""
+        candidate = _FRONTEND_DIST / full_path
+        # Fichiers statiques à la racine (favicon, manifest, sw.js…)
+        if candidate.exists() and candidate.is_file():
+            return FileResponse(str(candidate))
+        return FileResponse(str(_FRONTEND_DIST / "index.html"))
