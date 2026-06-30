@@ -18,11 +18,11 @@
           <n-space justify="center" style="margin-top: 24px; flex-wrap: wrap;">
             <n-button
               v-for="s in suggestions"
-              :key="s"
+              :key="s.label"
               size="small"
-              @click="sendMessage(s)"
+              @click="handleSuggestion(s)"
             >
-              {{ s }}
+              {{ s.label }}
             </n-button>
           </n-space>
         </div>
@@ -103,15 +103,27 @@ const input = ref('')
 const isLoading = ref(false)
 const scrollbarRef = ref()
 
-const suggestions = [
-  '📊 Résumé du mois',
-  '🍽️ Dépenses restaurants ce mois',
-  '💡 Conseils pour économiser',
-  '📈 Prévision fin de mois',
+interface Suggestion {
+  label: string
+  action: 'chat' | 'forecast' | 'suggestions'
+  text?: string
+}
+
+const suggestions: Suggestion[] = [
+  { label: '📊 Résumé du mois', action: 'chat', text: 'Fais-moi un résumé de mes dépenses ce mois-ci.' },
+  { label: '🍽️ Dépenses restaurants', action: 'chat', text: 'Combien ai-je dépensé en restaurants ce mois ?' },
+  { label: '📈 Prévision fin de mois', action: 'forecast' },
+  { label: '💡 Suggestions budget', action: 'suggestions' },
 ]
 
 function handleEnter(e: KeyboardEvent) {
   if (!e.shiftKey) sendMessage()
+}
+
+async function handleSuggestion(s: Suggestion) {
+  if (s.action === 'forecast') return runForecast()
+  if (s.action === 'suggestions') return runSuggestions()
+  sendMessage(s.text)
 }
 
 async function sendMessage(text?: string) {
@@ -130,13 +142,53 @@ async function sendMessage(text?: string) {
   isLoading.value = true
 
   try {
-    // Contexte financier injecté dans le prompt
     const context = buildContext()
     const { data } = await api.post('/ai/chat', { message: content, context })
     assistantMsg.content = data.response
     assistantMsg.loading = false
   } catch (e: any) {
-    assistantMsg.content = e?.response?.data?.detail ?? 'Désolé, une erreur est survenue. Vérifiez la configuration de l\'IA dans les Paramètres.'
+    assistantMsg.content = e?.response?.data?.detail ?? 'Désolé, une erreur est survenue. Vérifiez la configuration IA dans les Paramètres.'
+    assistantMsg.loading = false
+  } finally {
+    isLoading.value = false
+    await scrollToBottom()
+  }
+}
+
+async function runForecast() {
+  if (isLoading.value) return
+  const userMsg: Message = { id: Date.now().toString(), role: 'user', content: '📈 Génère une prévision de fin de mois' }
+  const assistantMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: '', loading: true }
+  messages.value.push(userMsg, assistantMsg)
+  await scrollToBottom()
+  isLoading.value = true
+  try {
+    const { data } = await api.post('/ai/forecast')
+    const header = `📊 **Projection fin de mois**\n• Dépensé : ${Math.abs(data.current_month_total).toFixed(2)} €\n• Projection : ${Math.abs(data.projected_month_total).toFixed(2)} €\n• Avancement : ${data.days_elapsed}/${data.days_in_month} jours\n\n`
+    assistantMsg.content = header + data.analysis
+    assistantMsg.loading = false
+  } catch (e: any) {
+    assistantMsg.content = e?.response?.data?.detail ?? 'Erreur lors du calcul de prévision.'
+    assistantMsg.loading = false
+  } finally {
+    isLoading.value = false
+    await scrollToBottom()
+  }
+}
+
+async function runSuggestions() {
+  if (isLoading.value) return
+  const userMsg: Message = { id: Date.now().toString(), role: 'user', content: '💡 Génère des suggestions pour optimiser mon budget' }
+  const assistantMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: '', loading: true }
+  messages.value.push(userMsg, assistantMsg)
+  await scrollToBottom()
+  isLoading.value = true
+  try {
+    const { data } = await api.post('/ai/suggestions')
+    assistantMsg.content = data.suggestions
+    assistantMsg.loading = false
+  } catch (e: any) {
+    assistantMsg.content = e?.response?.data?.detail ?? 'Erreur lors de la génération des suggestions.'
     assistantMsg.loading = false
   } finally {
     isLoading.value = false

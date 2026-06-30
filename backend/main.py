@@ -3,11 +3,15 @@ import subprocess
 import sys
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from config import settings
+from limiter import limiter
 from scheduler.jobs import start_scheduler, stop_scheduler
 
 logging.basicConfig(
@@ -52,6 +56,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # CORS — restreint à l'URL de l'application (PWA sur même domaine)
 app.add_middleware(
     CORSMiddleware,
@@ -73,6 +81,7 @@ from routers.ai import router as ai_router
 from routers.audit import router as audit_router
 from routers.notifications import router as notifications_router
 from routers.category_rules import router as category_rules_router
+from routers.export import router as export_router
 
 app.include_router(auth_router)
 app.include_router(accounts_router)
@@ -85,6 +94,7 @@ app.include_router(ai_router)
 app.include_router(audit_router)
 app.include_router(notifications_router)
 app.include_router(category_rules_router)
+app.include_router(export_router)
 
 
 @app.get("/health")

@@ -64,11 +64,14 @@
       </n-space>
     </n-card>
 
-    <!-- Résumé -->
-    <n-space style="margin-bottom: 12px;">
-      <n-tag type="default">{{ txStore.transactions.length }} transaction(s)</n-tag>
-      <n-tag type="error">Dépenses : {{ totalExpenses.toFixed(2) }} €</n-tag>
-      <n-tag type="success">Revenus : {{ totalIncome.toFixed(2) }} €</n-tag>
+    <!-- Résumé + export -->
+    <n-space style="margin-bottom: 12px;" justify="space-between" align="center">
+      <n-space>
+        <n-tag type="default">{{ txStore.transactions.length }} transaction(s)</n-tag>
+        <n-tag type="error">Dépenses : {{ totalExpenses.toFixed(2) }} €</n-tag>
+        <n-tag type="success">Revenus : {{ totalIncome.toFixed(2) }} €</n-tag>
+      </n-space>
+      <n-button size="small" @click="exportCSV">⬇️ Export CSV</n-button>
     </n-space>
 
     <!-- Table -->
@@ -264,6 +267,30 @@ async function importOFX({ file, onFinish, onError }: any) {
     message.error(e?.response?.data?.detail ?? 'Erreur import OFX')
     onError()
   }
+}
+
+function exportCSV() {
+  const params = new URLSearchParams()
+  if (dateRange.value) {
+    params.set('date_from', format(new Date(dateRange.value[0]), 'yyyy-MM-dd'))
+    params.set('date_to', format(new Date(dateRange.value[1]), 'yyyy-MM-dd'))
+  }
+  if (selectedAccount.value) params.set('account_id', selectedAccount.value)
+  if (selectedCategory.value) params.set('category_id', selectedCategory.value)
+
+  const token = localStorage.getItem('access_token')
+  const url = `/api/export/csv?${params.toString()}`
+  // Téléchargement via fetch pour inclure le header Authorization
+  fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    .then((r) => r.blob())
+    .then((blob) => {
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = 'transactions.csv'
+      a.click()
+      URL.revokeObjectURL(a.href)
+    })
+    .catch(() => message.error('Erreur lors de l\'export'))
 }
 
 onMounted(async () => {

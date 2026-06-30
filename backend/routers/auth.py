@@ -21,6 +21,7 @@ from auth.totp import (
     verify_totp_code,
 )
 from dependencies import CurrentUser, DB
+from limiter import limiter
 from models.models import AuditLog, User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -82,6 +83,7 @@ def _log_audit(db: Session, action: str, user_id: Optional[str], request: Reques
 # ---------- Routes ----------
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/hour")
 async def register(body: RegisterRequest, db: DB, request: Request):
     """Crée le premier utilisateur (une seule fois — app mono-utilisateur)."""
     if db.query(User).count() > 0:
@@ -99,6 +101,7 @@ async def register(body: RegisterRequest, db: DB, request: Request):
 
 
 @router.post("/login", response_model=LoginResponse)
+@limiter.limit("10/minute")
 async def login(
     form: Annotated[OAuth2PasswordRequestForm, ],
     db: DB,
@@ -149,6 +152,7 @@ async def login(
 
 
 @router.post("/totp/verify", response_model=LoginResponse)
+@limiter.limit("10/minute")
 async def totp_verify(body: TOTPVerifyRequest, db: DB, request: Request):
     """Valide le code TOTP après le premier login."""
     user = db.query(User).filter(User.id == body.user_id, User.is_active == True).first()
