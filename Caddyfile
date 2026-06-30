@@ -1,0 +1,47 @@
+{
+	admin off
+	log {
+		format json
+	}
+}
+
+:80 {
+	redir https://{host}{uri} permanent
+}
+
+:443 {
+	tls internal
+
+	# Security headers
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' wss:; worker-src 'self'; manifest-src 'self'"
+		-Server
+	}
+
+	# API backend
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy backend:8000 {
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	# ntfy notifications (accessible depuis le frontend pour s'abonner)
+	handle /ntfy/* {
+		uri strip_prefix /ntfy
+		reverse_proxy ntfy:80
+	}
+
+	# Frontend Vue.js (Phase 2 — pour l'instant placeholder)
+	handle /* {
+		root * /srv/frontend
+		try_files {path} /index.html
+		file_server
+	}
+}
