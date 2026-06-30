@@ -80,7 +80,7 @@
       :data="txStore.transactions"
       :loading="txStore.loading"
       :pagination="{ pageSize: 50 }"
-      :row-key="(row) => row.id"
+      :row-key="(row: any) => row.id"
       size="small"
       striped
     />

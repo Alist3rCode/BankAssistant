@@ -4,7 +4,7 @@
       <!-- En-tête -->
       <div style="text-align: center; margin-bottom: 32px;">
         <div style="font-size: 40px; margin-bottom: 8px;">💳</div>
-        <n-h2 style="margin: 0; color: #18a058;">BankAssistant</h2>
+        <n-h2 style="margin: 0; color: #18a058;">BankAssistant</n-h2>
         <n-text depth="3" style="font-size: 14px;">Assistant bancaire IA — Crédit Agricole</n-text>
       </div>
 
@@ -124,7 +124,7 @@ async function handleLogin() {
   try {
     const result = await auth.login(email.value, password.value)
     if (result.requires_totp) {
-      pendingUserId.value = result.user_id
+      pendingUserId.value = result.user_id ?? ''
       step.value = 'totp'
       await nextTick()
       totpInputRef.value?.focus()

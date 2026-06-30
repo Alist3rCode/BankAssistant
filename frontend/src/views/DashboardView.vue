@@ -199,7 +199,7 @@ const expenseProgress = computed(() =>
 const lastSyncLabel = computed(() => {
   const synced = accounts.value.map((a) => a.last_synced).filter(Boolean)
   if (synced.length === 0) return 'Jamais'
-  const latest = synced.sort().at(-1)!
+  const sorted = synced.sort(); const latest = sorted[sorted.length - 1]!
   return format(new Date(latest), 'dd/MM à HH:mm', { locale: fr })
 })
 

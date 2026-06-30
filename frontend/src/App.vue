@@ -13,10 +13,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { darkTheme, frFR, dateFrFR, type GlobalThemeOverrides } from 'naive-ui'
-import { useOsTheme } from '@vueuse/core'
+import { useDark } from '@vueuse/core'
 
-const osTheme = useOsTheme()
-const theme = computed(() => (osTheme.value === 'dark' ? darkTheme : null))
+const isDark = useDark()
+const theme = computed(() => (isDark.value ? darkTheme : null))
 
 const themeOverrides: GlobalThemeOverrides = {
   common: {
