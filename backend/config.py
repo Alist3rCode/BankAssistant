@@ -1,9 +1,13 @@
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 
+# .env est à la racine du projet (un niveau au-dessus de backend/)
+_ENV_FILE = Path(__file__).parent.parent / ".env"
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=str(_ENV_FILE), extra="ignore")
 
     # Base de données (chemin relatif au dossier courant en local, absolu en Docker)
     db_path: str = "./data/bankassistant.db"
