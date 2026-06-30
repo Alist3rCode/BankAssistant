@@ -193,26 +193,134 @@
            Onglet : Catégories & Règles
       ══════════════════════════════════════ -->
       <n-tab-pane name="categories" tab="🏷️ Catégories">
+
+        <!-- Catégories -->
+        <n-card embedded bordered style="margin-top: 16px;" title="Catégories">
+          <template #header-extra>
+            <n-button size="small" type="primary" @click="openCategoryModal()">+ Ajouter</n-button>
+          </template>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <n-tag
+              v-for="cat in categories"
+              :key="cat.id"
+              :color="cat.color ? { color: cat.color + '22', borderColor: cat.color, textColor: cat.color } : undefined"
+              :closable="!cat.is_system"
+              @close="deleteCategory(cat.id)"
+              @click="!cat.is_system && openCategoryModal(cat)"
+              style="cursor: pointer; user-select: none;"
+            >
+              <span v-if="cat.icon" style="margin-right: 4px;">{{ cat.icon }}</span>
+              {{ cat.name }}
+              <n-tag v-if="cat.is_system" size="tiny" style="margin-left: 4px; opacity: 0.6;">sys</n-tag>
+            </n-tag>
+          </div>
+        </n-card>
+
+        <!-- Règles de catégorisation -->
         <n-card embedded bordered style="margin-top: 16px;" title="Règles de catégorisation automatique">
-          <n-alert type="info" :bordered="false" style="margin-bottom: 16px;">
-            Ces règles sont appliquées automatiquement lors du scraping. Elles s'appliquent en priorité croissante.
+          <template #header-extra>
+            <n-space>
+              <n-button size="small" :loading="applyLoading" @click="applyRules(false)">
+                ▶️ Appliquer aux non catégorisées
+              </n-button>
+              <n-button size="small" secondary :loading="applyLoading" @click="applyRules(true)">
+                🔄 Tout recatégoriser
+              </n-button>
+              <n-button size="small" type="primary" @click="openRuleModal()">+ Ajouter une règle</n-button>
+            </n-space>
+          </template>
+
+          <n-alert type="info" :bordered="false" style="margin-bottom: 12px;">
+            Les règles s'appliquent par <b>priorité décroissante</b> — la première qui correspond l'emporte.
           </n-alert>
-          <n-empty description="La gestion complète des catégories et règles sera disponible dans la prochaine version." />
+
+          <n-data-table
+            :columns="ruleColumns"
+            :data="rules"
+            :bordered="false"
+            size="small"
+          />
         </n-card>
       </n-tab-pane>
+
+      <!-- Modal catégorie -->
+      <n-modal v-model:show="showCategoryModal" preset="card" title="Catégorie" style="width: 400px;">
+        <n-form :model="categoryForm" label-placement="top">
+          <n-form-item label="Nom">
+            <n-input v-model:value="categoryForm.name" placeholder="Alimentation" />
+          </n-form-item>
+          <n-form-item label="Icône (emoji)">
+            <n-input v-model:value="categoryForm.icon" placeholder="🛒" maxlength="4" />
+          </n-form-item>
+          <n-form-item label="Couleur">
+            <n-color-picker v-model:value="categoryForm.color" :show-alpha="false" />
+          </n-form-item>
+          <n-form-item label="Type">
+            <n-radio-group v-model:value="categoryForm.is_income">
+              <n-radio :value="false">Dépense</n-radio>
+              <n-radio :value="true">Revenu</n-radio>
+            </n-radio-group>
+          </n-form-item>
+        </n-form>
+        <template #footer>
+          <n-space justify="end">
+            <n-button @click="showCategoryModal = false">Annuler</n-button>
+            <n-button type="primary" :loading="catSaveLoading" @click="saveCategory">
+              {{ editingCategory ? 'Modifier' : 'Créer' }}
+            </n-button>
+          </n-space>
+        </template>
+      </n-modal>
+
+      <!-- Modal règle -->
+      <n-modal v-model:show="showRuleModal" preset="card" title="Règle de catégorisation" style="width: 480px;">
+        <n-form :model="ruleForm" label-placement="top">
+          <n-form-item label="Motif (pattern)">
+            <n-input v-model:value="ruleForm.pattern" placeholder="FREE MOBILE, AMAZON, ^VIR.*SALAIRE" />
+          </n-form-item>
+          <n-form-item label="Type de correspondance">
+            <n-select v-model:value="ruleForm.match_type" :options="matchTypeOptions" />
+          </n-form-item>
+          <n-form-item label="Catégorie cible">
+            <n-select
+              v-model:value="ruleForm.category_id"
+              :options="categorySelectOptions"
+              filterable
+              placeholder="Choisir une catégorie"
+            />
+          </n-form-item>
+          <n-form-item label="Priorité (plus grand = plus prioritaire)">
+            <n-input-number v-model:value="ruleForm.priority" :min="0" :max="999" style="width: 100%;" />
+          </n-form-item>
+          <n-form-item label="Active">
+            <n-switch v-model:value="ruleForm.is_active" />
+          </n-form-item>
+        </n-form>
+        <template #footer>
+          <n-space justify="end">
+            <n-button @click="showRuleModal = false">Annuler</n-button>
+            <n-button type="primary" :loading="ruleSaveLoading" @click="saveRule">
+              {{ editingRule ? 'Modifier' : 'Créer' }}
+            </n-button>
+          </n-space>
+        </template>
+      </n-modal>
 
     </n-tabs>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useMessage } from 'naive-ui'
+import { ref, computed, h, onMounted } from 'vue'
+import { useMessage, NButton, NSpace, NTag, NSwitch } from 'naive-ui'
+import type { DataTableColumns } from 'naive-ui'
 import { settingsApi } from '@/api/settings'
 import { useSettingsStore } from '@/stores/settings'
 import { accountsApi } from '@/api/accounts'
 import type { CARegion } from '@/api/accounts'
 import api from '@/api/client'
+import { categoriesApi, categoryRulesApi } from '@/api/categories'
+import type { Category, CategoryRule } from '@/api/categories'
 
 const settingsStore = useSettingsStore()
 const message = useMessage()
@@ -362,6 +470,177 @@ async function sendTestNotification() {
   }
 }
 
+// --- Catégories ---
+const categories = ref<Category[]>([])
+const showCategoryModal = ref(false)
+const catSaveLoading = ref(false)
+const editingCategory = ref<Category | null>(null)
+const categoryForm = ref({ name: '', icon: '', color: '#18a058', is_income: false })
+
+const categorySelectOptions = computed(() =>
+  categories.value.map(c => ({ label: `${c.icon ?? ''} ${c.name}`.trim(), value: c.id }))
+)
+
+function openCategoryModal(cat?: Category) {
+  editingCategory.value = cat ?? null
+  categoryForm.value = {
+    name: cat?.name ?? '',
+    icon: cat?.icon ?? '',
+    color: cat?.color ?? '#18a058',
+    is_income: cat?.is_income ?? false,
+  }
+  showCategoryModal.value = true
+}
+
+async function saveCategory() {
+  if (!categoryForm.value.name.trim()) { message.warning('Nom requis'); return }
+  catSaveLoading.value = true
+  try {
+    const payload = {
+      name: categoryForm.value.name,
+      icon: categoryForm.value.icon || null,
+      color: categoryForm.value.color || null,
+      is_income: categoryForm.value.is_income,
+    }
+    if (editingCategory.value) {
+      await categoriesApi.update(editingCategory.value.id, payload)
+      message.success('Catégorie modifiée')
+    } else {
+      await categoriesApi.create(payload)
+      message.success('Catégorie créée')
+    }
+    showCategoryModal.value = false
+    categories.value = (await categoriesApi.list()).data
+  } catch {
+    message.error('Erreur lors de la sauvegarde')
+  } finally {
+    catSaveLoading.value = false
+  }
+}
+
+async function deleteCategory(id: string) {
+  try {
+    await categoriesApi.delete(id)
+    categories.value = categories.value.filter(c => c.id !== id)
+    message.success('Catégorie supprimée')
+  } catch (e: any) {
+    message.error(e?.response?.data?.detail ?? 'Erreur')
+  }
+}
+
+// --- Règles ---
+const rules = ref<CategoryRule[]>([])
+const showRuleModal = ref(false)
+const ruleSaveLoading = ref(false)
+const applyLoading = ref(false)
+const editingRule = ref<CategoryRule | null>(null)
+const ruleForm = ref({ pattern: '', match_type: 'contains', category_id: '', priority: 0, is_active: true })
+
+const matchTypeOptions = [
+  { label: 'Contient', value: 'contains' },
+  { label: 'Commence par', value: 'starts_with' },
+  { label: 'Finit par', value: 'ends_with' },
+  { label: 'Expression régulière', value: 'regex' },
+]
+
+function openRuleModal(rule?: CategoryRule) {
+  editingRule.value = rule ?? null
+  ruleForm.value = {
+    pattern: rule?.pattern ?? '',
+    match_type: rule?.match_type ?? 'contains',
+    category_id: rule?.category_id ?? '',
+    priority: rule?.priority ?? 0,
+    is_active: rule?.is_active ?? true,
+  }
+  showRuleModal.value = true
+}
+
+async function saveRule() {
+  if (!ruleForm.value.pattern.trim()) { message.warning('Motif requis'); return }
+  if (!ruleForm.value.category_id) { message.warning('Catégorie requise'); return }
+  ruleSaveLoading.value = true
+  try {
+    if (editingRule.value) {
+      await categoryRulesApi.update(editingRule.value.id, ruleForm.value)
+      message.success('Règle modifiée')
+    } else {
+      await categoryRulesApi.create(ruleForm.value)
+      message.success('Règle créée')
+    }
+    showRuleModal.value = false
+    rules.value = (await categoryRulesApi.list()).data
+  } catch (e: any) {
+    message.error(e?.response?.data?.detail ?? 'Erreur')
+  } finally {
+    ruleSaveLoading.value = false
+  }
+}
+
+async function deleteRule(id: string) {
+  try {
+    await categoryRulesApi.delete(id)
+    rules.value = rules.value.filter(r => r.id !== id)
+    message.success('Règle supprimée')
+  } catch {
+    message.error('Erreur lors de la suppression')
+  }
+}
+
+async function applyRules(allTransactions: boolean) {
+  applyLoading.value = true
+  try {
+    const { data } = await categoryRulesApi.apply(allTransactions)
+    message.success(data.message)
+  } catch {
+    message.error('Erreur lors de l\'application des règles')
+  } finally {
+    applyLoading.value = false
+  }
+}
+
+const ruleColumns: DataTableColumns<CategoryRule> = [
+  { title: 'Motif', key: 'pattern', ellipsis: { tooltip: true } },
+  {
+    title: 'Type',
+    key: 'match_type',
+    width: 140,
+    render: (row) => {
+      const labels: Record<string, string> = {
+        contains: 'Contient', starts_with: 'Commence par',
+        ends_with: 'Finit par', regex: 'Regex',
+      }
+      return labels[row.match_type] ?? row.match_type
+    },
+  },
+  { title: 'Catégorie', key: 'category_name', width: 160 },
+  { title: 'Priorité', key: 'priority', width: 80 },
+  {
+    title: 'Active',
+    key: 'is_active',
+    width: 80,
+    render: (row) => h(NSwitch, {
+      value: row.is_active,
+      size: 'small',
+      onUpdateValue: async (val: boolean) => {
+        await categoryRulesApi.update(row.id, { ...row, is_active: val })
+        const r = rules.value.find(r => r.id === row.id)
+        if (r) r.is_active = val
+      },
+    }),
+  },
+  {
+    title: '',
+    key: 'actions',
+    width: 100,
+    render: (row) => h(NSpace, { size: 'small' }, {
+      default: () => [
+        h(NButton, { size: 'tiny', onClick: () => openRuleModal(row) }, { default: () => '✏️' }),
+        h(NButton, { size: 'tiny', type: 'error', onClick: () => deleteRule(row.id) }, { default: () => '🗑️' }),
+      ],
+    }),
+  },
+]
+
 // --- Init ---
 onMounted(async () => {
   await settingsStore.fetchSettings()
@@ -379,6 +658,10 @@ onMounted(async () => {
   notifForm.value.budgetAlert = settingsStore.get('notifications.budget_alert', 'true') === 'true'
   notifForm.value.largeTransactionThreshold = Number(settingsStore.get('notifications.large_transaction_threshold', '500'))
   notifForm.value.dailyReport = settingsStore.get('notifications.daily_report', 'false') === 'true'
+
+  // Catégories & règles
+  categories.value = (await categoriesApi.list()).data
+  rules.value = (await categoryRulesApi.list()).data
 
   // Statut scraper
   pollSyncStatus()

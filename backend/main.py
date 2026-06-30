@@ -72,6 +72,7 @@ from routers.categories import router as categories_router
 from routers.ai import router as ai_router
 from routers.audit import router as audit_router
 from routers.notifications import router as notifications_router
+from routers.category_rules import router as category_rules_router
 
 app.include_router(auth_router)
 app.include_router(accounts_router)
@@ -83,6 +84,7 @@ app.include_router(categories_router)
 app.include_router(ai_router)
 app.include_router(audit_router)
 app.include_router(notifications_router)
+app.include_router(category_rules_router)
 
 
 @app.get("/health")

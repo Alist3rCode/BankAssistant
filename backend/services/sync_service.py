@@ -14,6 +14,7 @@ from models.models import AppSetting, BankAccount, Transaction
 from scraper.ca_scraper import CreditAgricoleScraper, ScrapedAccount, ScrapedTransaction
 from scraper.csv_import import ImportedTransaction
 from scraper.ca_regions import CA_REGIONS
+from services.categorization_service import apply_rules
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,12 @@ async def sync_all_accounts(db: Session) -> dict:
 
         account.last_synced = datetime.now(timezone.utc)
         db.commit()
+
+    # Catégorisation automatique après le scraping
+    auto_categorize = _get_setting(db, "ai.auto_categorize")
+    if auto_categorize != "false":
+        categorized = apply_rules(db, only_uncategorized=True)
+        stats["auto_categorized"] = categorized
 
     logger.info("[sync] Synchronisation terminée : %s", stats)
     return stats
