@@ -91,14 +91,18 @@ $envFile = Join-Path $ProjectRoot ".env"
 if (-not (Test-Path $envFile)) {
     Write-Step "Creation du fichier .env (premiere utilisation)..."
 
-    $encKey = & $python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-    $jwtKey = & $python -c "import secrets; print(secrets.token_hex(32))"
+    $encKey    = & $python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    $jwtKey    = & $python -c "import secrets; print(secrets.token_hex(32))"
+    $adminPwd  = & $python -c "import secrets, string; print(''.join(secrets.choice(string.ascii_letters+string.digits+'!@#') for _ in range(16)))"
+    $adminEmail = "admin@bankassistant.local"
 
     $lines = @(
         "# Genere automatiquement par start.ps1 - NE PAS COMMITTER",
         "DB_PATH=./data/bankassistant.db",
         "ENCRYPTION_KEY=$encKey",
         "SECRET_KEY=$jwtKey",
+        "ADMIN_EMAIL=$adminEmail",
+        "ADMIN_PASSWORD=$adminPwd",
         "JWT_ALGORITHM=HS256",
         "ACCESS_TOKEN_EXPIRE_MINUTES=60",
         "REFRESH_TOKEN_EXPIRE_DAYS=30",
@@ -119,7 +123,14 @@ if (-not (Test-Path $envFile)) {
     )
     $lines | Out-File -FilePath $envFile -Encoding utf8
     Write-OK ".env cree avec des cles generees automatiquement"
-    Write-Warn "Ajoutez votre cle Groq depuis l'interface : Parametres -> IA"
+    Write-Host ""
+    Write-Host "    ============================================" -ForegroundColor Yellow
+    Write-Host "    IDENTIFIANTS DE CONNEXION (premiere fois) :" -ForegroundColor Yellow
+    Write-Host "      Email    : $adminEmail"                    -ForegroundColor White
+    Write-Host "      Password : $adminPwd"                     -ForegroundColor White
+    Write-Host "    Notez-les ! Modifiables dans Parametres."   -ForegroundColor Yellow
+    Write-Host "    ============================================" -ForegroundColor Yellow
+    Write-Host ""
 } else {
     Write-OK ".env existant trouve"
 }

@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     ntfy_topic: str = "bankassistant"
     ntfy_token: str = ""
 
+    # Compte admin initial (utilisé une seule fois si aucun utilisateur n'existe)
+    admin_email: str = "admin@bankassistant.local"
+    admin_password: str = ""
+
     # Application
     app_url: str = "http://localhost:8000"
     log_level: str = "INFO"

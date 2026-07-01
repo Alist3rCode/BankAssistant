@@ -23,6 +23,27 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _create_default_admin() -> None:
+    """Crée le compte admin depuis .env si aucun utilisateur n'existe encore."""
+    if not settings.admin_password:
+        return
+    from database import SessionLocal
+    from models.models import User
+    from auth.security import hash_password
+    db = SessionLocal()
+    try:
+        if db.query(User).count() == 0:
+            user = User(
+                email=settings.admin_email,
+                hashed_password=hash_password(settings.admin_password),
+            )
+            db.add(user)
+            db.commit()
+            logger.info("Compte admin cree : %s", settings.admin_email)
+    finally:
+        db.close()
+
+
 def run_migrations() -> None:
     """Applique les migrations Alembic au démarrage."""
     logger.info("Vérification et application des migrations Alembic...")
@@ -41,6 +62,7 @@ def run_migrations() -> None:
 async def lifespan(app: FastAPI):
     # Démarrage
     run_migrations()
+    _create_default_admin()
     start_scheduler()
     logger.info("BankAssistant démarré — %s", settings.app_url)
     yield
