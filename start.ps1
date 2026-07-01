@@ -211,5 +211,7 @@ Write-Host "============================================================" -Foreg
 Write-Host ""
 
 Push-Location (Join-Path $ProjectRoot "backend")
+# ErrorActionPreference Continue pour que les logs uvicorn (stderr) n'arretent pas le script
+$ErrorActionPreference = 'Continue'
 & $python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 Pop-Location
