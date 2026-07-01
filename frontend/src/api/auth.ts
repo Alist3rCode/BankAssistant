@@ -20,9 +20,8 @@ export const authApi = {
     api.post('/auth/register', { email, password }),
 
   login: (email: string, password: string): Promise<{ data: LoginResponse }> =>
-    api.post('/auth/login', null, {
+    api.post('/auth/login', new URLSearchParams({ username: email, password }), {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      data: new URLSearchParams({ username: email, password }),
     }),
 
   verifyTotp: (user_id: string, code: string, temp_token: string): Promise<{ data: LoginResponse }> =>
