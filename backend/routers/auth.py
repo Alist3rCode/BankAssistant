@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
@@ -103,7 +103,7 @@ async def register(body: RegisterRequest, db: DB, request: Request):
 @router.post("/login", response_model=LoginResponse)
 @limiter.limit("10/minute")
 async def login(
-    form: Annotated[OAuth2PasswordRequestForm, ],
+    form: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: DB,
     request: Request,
 ):
