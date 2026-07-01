@@ -60,6 +60,32 @@ async def get_setting(key: str, current_user: CurrentUser, db: DB):
     return {"key": key, "value": value, "is_encrypted": False}
 
 
+@router.put("/batch")
+async def update_settings_batch(
+    body: dict[str, Any],
+    current_user: CurrentUser,
+    db: DB,
+):
+    """Met à jour plusieurs paramètres en une seule requête."""
+    for key, value in body.items():
+        is_encrypted = key in ENCRYPTED_KEYS
+        raw_value = json.dumps(value) if isinstance(value, (dict, list, bool)) else str(value)
+
+        if is_encrypted and raw_value and raw_value != "***":
+            raw_value = encrypt(raw_value)
+
+        row = db.query(AppSetting).filter(AppSetting.key == key).first()
+        if row:
+            row.value = raw_value
+            row.is_encrypted = is_encrypted
+        else:
+            db.add(AppSetting(key=key, value=raw_value, is_encrypted=is_encrypted))
+
+    db.commit()
+    load_schedule_from_db()
+    return {"message": f"{len(body)} paramètre(s) mis à jour"}
+
+
 @router.put("/{key}")
 async def update_setting(key: str, body: UpdateSettingRequest, current_user: CurrentUser, db: DB):
     row = db.query(AppSetting).filter(AppSetting.key == key).first()
@@ -89,29 +115,3 @@ async def update_setting(key: str, body: UpdateSettingRequest, current_user: Cur
         load_schedule_from_db()
 
     return {"message": f"Paramètre '{key}' mis à jour"}
-
-
-@router.put("/batch")
-async def update_settings_batch(
-    body: dict[str, Any],
-    current_user: CurrentUser,
-    db: DB,
-):
-    """Met à jour plusieurs paramètres en une seule requête."""
-    for key, value in body.items():
-        is_encrypted = key in ENCRYPTED_KEYS
-        raw_value = json.dumps(value) if isinstance(value, (dict, list, bool)) else str(value)
-
-        if is_encrypted and raw_value and raw_value != "***":
-            raw_value = encrypt(raw_value)
-
-        row = db.query(AppSetting).filter(AppSetting.key == key).first()
-        if row:
-            row.value = raw_value
-            row.is_encrypted = is_encrypted
-        else:
-            db.add(AppSetting(key=key, value=raw_value, is_encrypted=is_encrypted))
-
-    db.commit()
-    load_schedule_from_db()
-    return {"message": f"{len(body)} paramètre(s) mis à jour"}
