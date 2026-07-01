@@ -14,10 +14,15 @@ function Write-Fail($msg) { Write-Host "    [X]  $msg" -ForegroundColor Red }
 
 # ── 1. Verifier Python ──────────────────────────────────────────────────
 Write-Step "Verification de Python..."
-try {
-    $pyver = python --version 2>&1
-    Write-OK $pyver
-} catch {
+$pythonExe = $null
+foreach ($candidate in @("py", "python", "python3")) {
+    $prevEA = $ErrorActionPreference ; $ErrorActionPreference = 'SilentlyContinue'
+    $ver = & $candidate --version 2>&1
+    $ok  = ($LASTEXITCODE -eq 0)
+    $ErrorActionPreference = $prevEA
+    if ($ok) { $pythonExe = $candidate ; Write-OK "$ver (commande : $candidate)" ; break }
+}
+if (-not $pythonExe) {
     Write-Fail "Python introuvable. Installez Python 3.10+ depuis https://www.python.org/downloads/"
     Read-Host "Appuyez sur Entree pour quitter"
     exit 1
@@ -50,7 +55,7 @@ Write-Step "Configuration de l'environnement Python..."
 $venvPath = Join-Path $env:USERPROFILE ".bankassistant_venv"
 if (-not (Test-Path $venvPath)) {
     Write-Host "    Creation du venv dans $venvPath ..."
-    python -m venv $venvPath
+    & $pythonExe -m venv $venvPath
     Write-OK "Venv cree"
 } else {
     Write-OK "Venv existant : $venvPath"
