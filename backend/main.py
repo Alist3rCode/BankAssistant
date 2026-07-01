@@ -99,6 +99,7 @@ app.add_middleware(
 )
 
 # Routers
+from fastapi import APIRouter as _APIRouter
 from routers.auth import router as auth_router
 from routers.accounts import router as accounts_router
 from routers.transactions import router as transactions_router
@@ -112,18 +113,20 @@ from routers.notifications import router as notifications_router
 from routers.category_rules import router as category_rules_router
 from routers.export import router as export_router
 
-app.include_router(auth_router)
-app.include_router(accounts_router)
-app.include_router(transactions_router)
-app.include_router(scraper_router)
-app.include_router(settings_router)
-app.include_router(budgets_router)
-app.include_router(categories_router)
-app.include_router(ai_router)
-app.include_router(audit_router)
-app.include_router(notifications_router)
-app.include_router(category_rules_router)
-app.include_router(export_router)
+_api = _APIRouter(prefix="/api")
+_api.include_router(auth_router)
+_api.include_router(accounts_router)
+_api.include_router(transactions_router)
+_api.include_router(scraper_router)
+_api.include_router(settings_router)
+_api.include_router(budgets_router)
+_api.include_router(categories_router)
+_api.include_router(ai_router)
+_api.include_router(audit_router)
+_api.include_router(notifications_router)
+_api.include_router(category_rules_router)
+_api.include_router(export_router)
+app.include_router(_api)
 
 
 @app.get("/health")
