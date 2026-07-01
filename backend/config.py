@@ -1,16 +1,26 @@
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
+from pydantic import Field, field_validator
 
-# .env est à la racine du projet (un niveau au-dessus de backend/)
-_ENV_FILE = Path(__file__).parent.parent / ".env"
+# Racine du projet = parent de backend/
+_PROJECT_ROOT = Path(__file__).parent.parent
+_ENV_FILE = _PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=str(_ENV_FILE), extra="ignore")
 
-    # Base de données (chemin relatif au dossier courant en local, absolu en Docker)
-    db_path: str = "./data/bankassistant.db"
+    # Base de données — chemin résolu en absolu depuis la racine du projet
+    db_path: str = str(_PROJECT_ROOT / "data" / "bankassistant.db")
+
+    @field_validator("db_path")
+    @classmethod
+    def resolve_db_path(cls, v: str) -> str:
+        p = Path(v)
+        if not p.is_absolute():
+            p = _PROJECT_ROOT / p
+        p.parent.mkdir(parents=True, exist_ok=True)
+        return str(p)
     encryption_key: str = Field(..., description="Clé Fernet base64 pour le chiffrement des champs sensibles")
 
     # JWT
